@@ -51,9 +51,8 @@
 *.o
 *.so
 *.tmp
-*.txt
 # IDE / OS
-
+log.txt
 .cache/
 .ccls-cache/
 .direnv/

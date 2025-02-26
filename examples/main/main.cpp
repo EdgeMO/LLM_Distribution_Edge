@@ -673,20 +673,11 @@ int main(int argc, char ** argv) {
         }
 
         // display text
-        if (input_echo && display) {
+        if (input_echo) {
             for (auto id : embd) {
-                const std::string token_str = common_token_to_piece(ctx, id, params.special);
-
-                // Console/Stream Output
-                LOG("%s", token_str.c_str());
-
-                // Record Displayed Tokens To Log
-                // Note: Generated tokens are created one by one hence this check
-                if (embd.size() > 1) {
-                    // Incoming Requested Tokens
-                    input_tokens.push_back(id);
-                } else {
-                    // Outgoing Generated Tokens
+                if (embd.size() <= 1) {  // 只处理模型生成的token
+                    const std::string token_str = common_token_to_piece(ctx, id, params.special);
+                    std::cout << token_str << std::flush;
                     output_tokens.push_back(id);
                     output_ss << token_str;
                 }
@@ -877,7 +868,7 @@ int main(int argc, char ** argv) {
             is_interacting = true;
         }
     }
-    LOG("\n!!!!!![end of text!!!!!!!!!!!!!]\n");
+    LOG("[end]\n");
     if (!path_session.empty() && params.prompt_cache_all && !params.prompt_cache_ro) {
         LOG("\n%s: saving final output to session file '%s'\n", __func__, path_session.c_str());
         llama_state_save_file(ctx, path_session.c_str(), session_tokens.data(), session_tokens.size());
