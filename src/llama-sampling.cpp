@@ -2,7 +2,7 @@
 
 #include "llama-vocab.h"
 #include "llama-grammar.h"
-#include <fstream>
+
 #include <algorithm>
 #include <cassert>
 #include <cfloat>
@@ -14,7 +14,7 @@
 #include <numeric>
 #include <random>
 #include <unordered_map>
-#include <iomanip> 
+
 static int llama_sample_dist(llama_token_data_array * cur_p, std::mt19937 & rng) {
     // iterator for the probabilities
 #ifdef __GNUC__
@@ -2331,19 +2331,7 @@ struct llama_perf_sampler_data llama_perf_sampler(const struct llama_sampler * c
 
 void llama_perf_sampler_print(const struct llama_sampler * chain) {
     const auto data = llama_perf_sampler(chain);
-    std::ofstream log_file("./log.txt", std::ios::app); // 以追加模式打开文件
 
-    if (log_file.is_open()) {
-        log_file << std::fixed << std::setprecision(2); // 设置浮点数格式
-        log_file << __func__ << ":    sampling time = " << std::setw(10) << data.t_sample_ms << " ms / " 
-                << std::setw(5) << data.n_sample << " runs   (" 
-                << std::setw(8) << data.t_sample_ms / data.n_sample << " ms per token, " 
-                << std::setw(8) << 1e3 / data.t_sample_ms * data.n_sample << " tokens per second)"
-                <<std::endl;
-        log_file.close(); // 关闭文件
-    } else {
-        LLAMA_LOG_INFO("Failed to open log file\n");
-    }
     LLAMA_LOG_INFO("%s:    sampling time = %10.2f ms / %5d runs   (%8.2f ms per token, %8.2f tokens per second)\n",
             __func__, data.t_sample_ms, data.n_sample, data.t_sample_ms / data.n_sample, 1e3 / data.t_sample_ms * data.n_sample);
 }

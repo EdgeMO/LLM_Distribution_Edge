@@ -1,9 +1,9 @@
 #include "llama-impl.h"
 #include "llama-vocab.h"
 #include "llama-sampling.h"
-#include <fstream>
+
 #include "unicode.h"
-#include <iomanip>
+
 #include "ggml.h"
 #include "ggml-alloc.h"
 #include "ggml-backend.h"
@@ -22255,26 +22255,7 @@ void llama_perf_context_print(const struct llama_context * ctx) {
     const auto data = llama_perf_context(ctx);
 
     const double t_end_ms = 1e-3 * ggml_time_us();
-    std::ofstream log_file("./log.txt", std::ios::app); // 以追加模式打开文件
 
-    // 检查文件是否成功打开
-    if (log_file.is_open()) {
-        log_file << std::fixed << std::setprecision(2); // 设置浮点数格式
-        log_file << __func__ << ":        load time = " << data.t_load_ms << " ms\n";
-        log_file << __func__ << ": prompt eval time = " << data.t_p_eval_ms << " ms / " 
-                << data.n_p_eval << " tokens (" 
-                << data.t_p_eval_ms / data.n_p_eval << " ms per token, " 
-                << 1e3 / data.t_p_eval_ms * data.n_p_eval << " tokens per second)\n";
-        log_file << __func__ << ":        eval time = " << data.t_eval_ms << " ms / " 
-                << data.n_eval << " runs   (" 
-                << data.t_eval_ms / data.n_eval << " ms per token, " 
-                << 1e3 / data.t_eval_ms * data.n_eval << " tokens per second)\n";
-        log_file << __func__ << ":       total time = " << (t_end_ms - data.t_start_ms) << " ms / " 
-                << (data.n_p_eval + data.n_eval) << " tokens\n";
-        log_file.close(); // 关闭文件
-    } else {
-        LLAMA_LOG_INFO("Failed to open log file\n");
-    }
     LLAMA_LOG_INFO("%s:        load time = %10.2f ms\n", __func__, data.t_load_ms);
     LLAMA_LOG_INFO("%s: prompt eval time = %10.2f ms / %5d tokens (%8.2f ms per token, %8.2f tokens per second)\n",
             __func__, data.t_p_eval_ms, data.n_p_eval, data.t_p_eval_ms / data.n_p_eval, 1e3 / data.t_p_eval_ms * data.n_p_eval);

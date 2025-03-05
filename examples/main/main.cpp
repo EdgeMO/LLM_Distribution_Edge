@@ -501,8 +501,7 @@ int main(int argc, char ** argv) {
         embd_inp.clear();
         embd_inp.push_back(decoder_start_token_id);
     }
-        
-    LOG("[start]");
+
     while ((n_remain != 0 && !is_antiprompt) || params.interactive) {
         // predict
         if (!embd.empty()) {
@@ -673,11 +672,20 @@ int main(int argc, char ** argv) {
         }
 
         // display text
-        if (input_echo) {
+        if (input_echo && display) {
             for (auto id : embd) {
-                if (embd.size() <= 1) {  // 只处理模型生成的token
-                    const std::string token_str = common_token_to_piece(ctx, id, params.special);
-                    std::cout << token_str << std::flush;
+                const std::string token_str = common_token_to_piece(ctx, id, params.special);
+
+                // Console/Stream Output
+                LOG("%s", token_str.c_str());
+
+                // Record Displayed Tokens To Log
+                // Note: Generated tokens are created one by one hence this check
+                if (embd.size() > 1) {
+                    // Incoming Requested Tokens
+                    input_tokens.push_back(id);
+                } else {
+                    // Outgoing Generated Tokens
                     output_tokens.push_back(id);
                     output_ss << token_str;
                 }
@@ -856,11 +864,13 @@ int main(int argc, char ** argv) {
                 is_interacting = false;
             }
         }
+
         // end of generation
         if (!embd.empty() && llama_token_is_eog(model, embd.back()) && !(params.interactive)) {
-            
+            LOG(" [end of text]\n");
             break;
         }
+
         // In interactive mode, respect the maximum number of tokens and drop back to user input when reached.
         // We skip this logic when n_predict == -1 (infinite) or -2 (stop at context size).
         if (params.interactive && n_remain <= 0 && params.n_predict >= 0) {
@@ -868,12 +878,13 @@ int main(int argc, char ** argv) {
             is_interacting = true;
         }
     }
-    LOG("[end]\n");
+
     if (!path_session.empty() && params.prompt_cache_all && !params.prompt_cache_ro) {
         LOG("\n%s: saving final output to session file '%s'\n", __func__, path_session.c_str());
         llama_state_save_file(ctx, path_session.c_str(), session_tokens.data(), session_tokens.size());
     }
 
+    LOG("\n\n");
     common_perf_print(ctx, smpl);
 
     common_sampler_free(smpl);
