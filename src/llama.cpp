@@ -1,9 +1,14 @@
 #include "llama-impl.h"
 #include "llama-vocab.h"
 #include "llama-sampling.h"
-
+#include <string>
 #include "unicode.h"
-
+#include <fstream>
+#include <iomanip>  // 用于std::setprecision
+#include <sstream>
+#include <iomanip>   // 用于 std::setw, std::fixed, std::setprecision
+#include <ostream>   // 用于 std::endl
+#include <fstream>   // 用于 std::ofstream
 #include "ggml.h"
 #include "ggml-alloc.h"
 #include "ggml-backend.h"
@@ -198,6 +203,18 @@ enum llm_arch {
     LLM_ARCH_UNKNOWN,
 };
 
+std::string extract_filename(const std::string& full_path) {
+    // 查找最后一个斜杠或反斜杠的位置
+    size_t last_slash_pos = full_path.find_last_of("/\\");
+    
+    // 如果找不到斜杠，则整个字符串就是文件名
+    if (last_slash_pos == std::string::npos) {
+        return full_path;
+    }
+    
+    // 返回最后一个斜杠后的子字符串
+    return full_path.substr(last_slash_pos + 1);
+}
 static const std::map<llm_arch, const char *> LLM_ARCH_NAMES = {
     { LLM_ARCH_LLAMA,           "llama"        },
     { LLM_ARCH_FALCON,          "falcon"       },
@@ -4460,7 +4477,12 @@ struct llama_model_loader {
 
         LLAMA_LOG_INFO("%s: loaded meta data with %d key-value pairs and %d tensors from %s (version %s)\n",
                 __func__, n_kv, n_tensors, fname.c_str(), llama_file_version_name(fver));
-
+        std::string filename = extract_filename(fname);
+        std::ofstream log_file("model_log.log", std::ios::app);
+        if (log_file.is_open()) {
+            log_file << filename << std::endl;
+            log_file.close();
+        }
         // determine file type based on the number of tensors for each quantization and print meta data
         // TODO: make optional
         {
@@ -6938,21 +6960,35 @@ static void llm_load_print_meta(llama_model_loader & ml, llama_model & model) {
         LLAMA_LOG_INFO("%s: ssm_dt_b_c_rms   = %d\n",     __func__, hparams.ssm_dt_b_c_rms);
     }
 
-    LLAMA_LOG_INFO("%s: model type       = %s\n",     __func__, llama_model_type_name(model.type));
-    LLAMA_LOG_INFO("%s: model ftype      = %s\n",     __func__, llama_model_ftype_name(model.ftype).c_str());
-    if (ml.n_elements >= 1e12) {
-        LLAMA_LOG_INFO("%s: model params     = %.2f T\n", __func__, ml.n_elements*1e-12);
-    } else if (ml.n_elements >= 1e9) {
-        LLAMA_LOG_INFO("%s: model params     = %.2f B\n", __func__, ml.n_elements*1e-9);
-    } else if (ml.n_elements >= 1e6) {
-        LLAMA_LOG_INFO("%s: model params     = %.2f M\n", __func__, ml.n_elements*1e-6);
-    } else {
-        LLAMA_LOG_INFO("%s: model params     = %.2f K\n", __func__, ml.n_elements*1e-3);
-    }
-    if (ml.n_bytes < GiB) {
-        LLAMA_LOG_INFO("%s: model size       = %.2f MiB (%.2f BPW) \n", __func__, ml.n_bytes/1024.0/1024.0,        ml.n_bytes*8.0/ml.n_elements);
-    } else {
-        LLAMA_LOG_INFO("%s: model size       = %.2f GiB (%.2f BPW) \n", __func__, ml.n_bytes/1024.0/1024.0/1024.0, ml.n_bytes*8.0/ml.n_elements);
+    std::ofstream model_log("model_log.log", std::ios::app);
+
+    if (model_log.is_open()) {
+        // 写入模型名和类型
+        model_log << "model type = " << llama_model_type_name(model.type) << std::endl;
+        model_log << "model ftype = " << llama_model_ftype_name(model.ftype) << std::endl;
+        
+        // 写入参数信息
+        if (ml.n_elements >= 1e12) {
+            model_log << "model params = " << std::fixed << std::setprecision(2) << (ml.n_elements*1e-12) << " T" << std::endl;
+        } else if (ml.n_elements >= 1e9) {
+            model_log << "model params = " << std::fixed << std::setprecision(2) << (ml.n_elements*1e-9) << " B" << std::endl;
+        } else if (ml.n_elements >= 1e6) {
+            model_log << "model params = " << std::fixed << std::setprecision(2) << (ml.n_elements*1e-6) << " M" << std::endl;
+        } else {
+            model_log << "model params = " << std::fixed << std::setprecision(2) << (ml.n_elements*1e-3) << " K" << std::endl;
+        }
+        
+        // 写入大小信息
+        double bpw = ml.n_bytes*8.0/ml.n_elements;
+        if (ml.n_bytes < GiB) {
+            model_log << "model size = " << std::fixed << std::setprecision(2) << (ml.n_bytes/1024.0/1024.0) << " MiB (" 
+                      << std::fixed << std::setprecision(2) << bpw << " BPW)" << std::endl;
+        } else {
+            model_log << "model size = " << std::fixed << std::setprecision(2) << (ml.n_bytes/1024.0/1024.0/1024.0) << " GiB (" 
+                      << std::fixed << std::setprecision(2) << bpw << " BPW)" << std::endl;
+        }
+        
+        model_log.close();
     }
 
     // general kv
@@ -22262,6 +22298,39 @@ void llama_perf_context_print(const struct llama_context * ctx) {
     LLAMA_LOG_INFO("%s:        eval time = %10.2f ms / %5d runs   (%8.2f ms per token, %8.2f tokens per second)\n",
             __func__, data.t_eval_ms, data.n_eval, data.t_eval_ms / data.n_eval, 1e3 / data.t_eval_ms * data.n_eval);
     LLAMA_LOG_INFO("%s:       total time = %10.2f ms / %5d tokens\n", __func__, (t_end_ms - data.t_start_ms), (data.n_p_eval + data.n_eval));
+    {
+        std::ofstream model_log("model_log.log", std::ios::app);
+        if (model_log.is_open()) {
+            // 写入加载时间
+            model_log << "load time = " 
+                      << std::setw(10) << std::fixed << std::setprecision(2) << data.t_load_ms << " ms" 
+                      << std::endl;
+            
+            // 写入提示词评估时间
+            model_log << "prompt eval time = " 
+                      << std::setw(10) << std::fixed << std::setprecision(2) << data.t_p_eval_ms << " ms / " 
+                      << std::setw(5) << data.n_p_eval << " tokens ("
+                      << std::setw(8) << std::fixed << std::setprecision(2) << (data.t_p_eval_ms / data.n_p_eval) << " ms per token, "
+                      << std::setw(8) << std::fixed << std::setprecision(2) << (1e3 / data.t_p_eval_ms * data.n_p_eval) << " tokens per second)" 
+                      << std::endl;
+            
+            // 写入评估时间
+            model_log << "eval time = " 
+                      << std::setw(10) << std::fixed << std::setprecision(2) << data.t_eval_ms << " ms / " 
+                      << std::setw(5) << data.n_eval << " runs   ("
+                      << std::setw(8) << std::fixed << std::setprecision(2) << (data.t_eval_ms / data.n_eval) << " ms per token, "
+                      << std::setw(8) << std::fixed << std::setprecision(2) << (1e3 / data.t_eval_ms * data.n_eval) << " tokens per second)" 
+                      << std::endl;
+            
+            // 写入总时间
+            model_log << "total time = " 
+                      << std::setw(10) << std::fixed << std::setprecision(2) << (t_end_ms - data.t_start_ms) << " ms / " 
+                      << std::setw(5) << (data.n_p_eval + data.n_eval) << " tokens" 
+                      << std::endl;
+            
+            model_log.close();
+        }
+    }
 }
 
 void llama_perf_context_reset(struct llama_context * ctx) {

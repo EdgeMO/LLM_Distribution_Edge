@@ -2,7 +2,14 @@
 
 #include "llama-vocab.h"
 #include "llama-grammar.h"
-
+#include <string>
+#include "unicode.h"
+#include <fstream>
+#include <iomanip>  // 用于std::setprecision
+#include <sstream>
+#include <iomanip>   // 用于 std::setw, std::fixed, std::setprecision
+#include <ostream>   // 用于 std::endl
+#include <fstream>   
 #include <algorithm>
 #include <cassert>
 #include <cfloat>
@@ -2334,6 +2341,18 @@ void llama_perf_sampler_print(const struct llama_sampler * chain) {
 
     LLAMA_LOG_INFO("%s:    sampling time = %10.2f ms / %5d runs   (%8.2f ms per token, %8.2f tokens per second)\n",
             __func__, data.t_sample_ms, data.n_sample, data.t_sample_ms / data.n_sample, 1e3 / data.t_sample_ms * data.n_sample);
+    {
+        std::ofstream model_log("model_log.log", std::ios::app);
+        if (model_log.is_open()) {
+            model_log << "sampling time = " 
+                        << std::setw(10) << std::fixed << std::setprecision(2) << data.t_sample_ms << " ms / " 
+                        << std::setw(5) << data.n_sample << " runs   ("
+                        << std::setw(8) << std::fixed << std::setprecision(2) << (data.t_sample_ms / data.n_sample) << " ms per token, "
+                        << std::setw(8) << std::fixed << std::setprecision(2) << (1e3 / data.t_sample_ms * data.n_sample) << " tokens per second)"
+                        << std::endl;
+            model_log.close();
+        }
+    }
 }
 
 void llama_perf_sampler_reset(struct llama_sampler * chain) {
