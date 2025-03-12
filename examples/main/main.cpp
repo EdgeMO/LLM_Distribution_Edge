@@ -638,6 +638,11 @@ int main(int argc, char ** argv) {
 
                 LOG_DBG("saved session to %s\n", path_session.c_str());
             }
+            static bool start_marker_printed = false;
+            if (!start_marker_printed) {
+                LOG("[start]");
+                start_marker_printed = true;
+            }
 
             const llama_token id = common_sampler_sample(smpl, ctx, -1);
 
@@ -867,7 +872,7 @@ int main(int argc, char ** argv) {
 
         // end of generation
         if (!embd.empty() && llama_token_is_eog(model, embd.back()) && !(params.interactive)) {
-            LOG(" [end of text]\n");
+            LOG(" [end]\n");
             break;
         }
 

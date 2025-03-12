@@ -2,6 +2,17 @@
 
 ## Update local Cmake ( arrch64 ) to 3.28
 
+pip source change
+
+pip config set global.index-url https://pypi.tuna.tsinghua.edu.cn/simple
+
+
+
+conda config --add channels https://mirrors.tuna.tsinghua.edu.cn/anaconda/pkgs/free
+conda config --add channels https://mirrors.tuna.tsinghua.edu.cn/anaconda/pkgs/main
+conda config --add channels https://mirrors.tuna.tsinghua.edu.cn/anaconda/pkgs/r
+
+
 ### Download
 
 [Index of /files/v3.28](https://cmake.org/files/v3.28/)
@@ -49,11 +60,11 @@ use RPA repo to get gcc-9 g++-9
 
 ```bash
 
-add-apt-repositoryppa:ubuntu-toolchain-r/test
+sudo add-apt-repository ppa:ubuntu-toolchain-r/test
 
-sudoaptupdate
+sudo apt update
 
-sudoaptinstallgcc-9g++-9
+sudo apt install gcc-9 g++-9
 
 ```
 
@@ -84,7 +95,7 @@ compile llama.cpp
 
 cmake -B build
 
-cmake --build build --config Release-j4
+cmake --build build --config Release -j ./4
 
 ```
 
